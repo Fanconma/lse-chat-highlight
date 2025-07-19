@@ -1,0 +1,13 @@
+{
+    "entry": "ChatHighlight.js",
+    "name": "ChatHighlight",
+    "type": "lse-quickjs",
+    "version": "1.0.0",
+    "description": "Highlight keywords in chat!",
+    "extraInfo": {},
+    "dependencies": [
+        {
+            "name": "legacy-script-engine-quickjs"
+        }
+    ]
+}
