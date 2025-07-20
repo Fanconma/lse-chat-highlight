@@ -13,6 +13,23 @@ const CONFIG_PATH = `.\\Plugins\\ChatHighlight\\`;
 const LANG_PATH = `.\\Plugins\\ChatHighlight\\lang\\`;
 
 // =================================================================
+// Configuration Files
+// =================================================================
+// Initialize the main configuration file.
+let Config = new JsonConfigFile(CONFIG_PATH + "config.json", JSON.stringify({
+    config_version: PLUGIN.latestConfVer,
+    lang: "en_US",
+    command_registration: true,
+    enable_chat_highlight: true,
+    selfname_as_highlight: true,
+    keywords: ["thisisakeyword", "anotherkeyword"],
+    mention_sound: "note.bell"
+}));
+
+// Initialize the player data storage file.
+let Data = new JsonConfigFile(CONFIG_PATH + "player_data.json", JSON.stringify({}));
+
+// =================================================================
 // Internationalization (i18n) Setup
 // =================================================================
 // Load translations directly from a JSON object.
@@ -55,23 +72,6 @@ i18n.load(LANG_PATH + "language.json", "", {
 });
 
 // =================================================================
-// Configuration Files
-// =================================================================
-// Initialize the main configuration file.
-let Config = new JsonConfigFile(CONFIG_PATH + "config.json", JSON.stringify({
-    config_version: PLUGIN.latestConfVer,
-    command_registration: true,
-    enable_chat_highlight: true,
-    selfname_as_highlight: true,
-    keywords: ["thisisakeyword", "anotherkeyword"],
-    mention_sound: "note.bell"
-}));
-
-// Initialize the player data storage file.
-let Data = new JsonConfigFile(CONFIG_PATH + "player_data.json", JSON.stringify({}));
-
-
-// =================================================================
 // Data Handling Functions
 // These functions provide a structured way to interact with player data.
 // =================================================================
@@ -82,11 +82,39 @@ function PDataRemove(xuid, data) { let d = PDataGet(xuid); const i = d.indexOf(d
 function PDataRemoveAll(xuid) { Data.set(xuid, []); return true; }
 
 // =================================================================
+// Packet Sending Functions
+// =================================================================
+/**
+ * Plays a sound for a specific player by sending a packet directly.
+ * @param {Player} player The player object to send the packet to.
+ * @param {string} soundName The name of the sound to play (e.g., "note.bell").
+ * @param {FloatPos} position The position in the world to play the sound at.
+ * @param {number} volume The volume of the sound (default: 1.0).
+ * @param {number} pitch The pitch of the sound (default: 1.0).
+ */
+function playSoundPacket(player, soundName, position, volume = 1.0, pitch = 1.0) {
+    const bs = new BinaryStream();
+    bs.writeString(soundName);
+
+    // Position is multiplied by 8 for the packet protocol.
+    bs.writeVarInt(Math.round(position.x * 8));
+    bs.writeUnsignedVarInt(Math.round(position.y * 8));
+    bs.writeVarInt(Math.round(position.z * 8));
+
+    bs.writeFloat(volume);
+    bs.writeFloat(pitch);
+
+    // Create a packet with ID 86 (PlaySoundPacket)
+    const pkt = bs.createPacket(86);
+    player.sendPacket(pkt);
+}
+
+// =================================================================
 // Command Registration
 // =================================================================
 function regCmd() {
     // Create the base command.
-    let cmd = mc.newCommand("highlight", i18n.tr("command.description"), PermType.Any);
+    let cmd = mc.newCommand("highlight", i18n.trl(Config.get("lang","en_US"), "command.description"), PermType.Any);
     cmd.setAlias("hl");
     cmd.setAlias("高亮"); // Alias for Chinese users
 
@@ -132,29 +160,29 @@ function regCmd() {
         switch (res.action) {
             case "add":
                 PDataWriteOne(playerXuid, res.addKeywordName);
-                out.success(i18n.tr("command.success.add", res.addKeywordName));
+                out.success(i18n.trl(Config.get("lang","en_US"), "command.success.add", res.addKeywordName));
                 break;
             case "remove":
                 if (!playerKeywords.includes(res.removeKeywordName)) {
-                    out.error(i18n.tr("command.error.notExist", res.removeKeywordName));
+                    out.error(i18n.trl(Config.get("lang","en_US"), "command.error.notExist", res.removeKeywordName));
                     return;
                 }
                 PDataRemove(playerXuid, res.removeKeywordName);
-                out.success(i18n.tr("command.success.remove", res.removeKeywordName));
+                out.success(i18n.trl(Config.get("lang","en_US"), "command.success.remove", res.removeKeywordName));
                 break;
             case "remove_all":
                 PDataRemoveAll(playerXuid);
-                out.success(i18n.tr("command.success.removeAll"));
+                out.success(i18n.trl(Config.get("lang","en_US"), "command.success.removeAll"));
                 break;
             case "list":
-                const keywordsString = playerKeywords.length > 0 ? playerKeywords.join("§r, §a") : i18n.tr("command.list.empty");
-                out.addMessage(i18n.tr("command.list.header") + "§a" + keywordsString + i18n.tr("command.list.footer"));
+                const keywordsString = playerKeywords.length > 0 ? playerKeywords.join("§r, §a") : i18n.trl(Config.get("lang","en_US"), "command.list.empty");
+                out.addMessage(i18n.trl(Config.get("lang","en_US"), "command.list.header") + "§a" + keywordsString + i18n.trl(Config.get("lang","en_US"), "command.list.footer"));
                 break;
             case "help":
-                out.addMessage(i18n.tr("command.help.message"));
+                out.addMessage(i18n.trl(Config.get("lang","en_US"), "command.help.message"));
                 break;
             default: // Runs when the command is executed with no arguments
-                out.addMessage(i18n.tr("plugin.default.message", PLUGIN.name, PLUGIN.author, PLUGIN.version));
+                out.addMessage(i18n.trl(Config.get("lang","en_US"), "plugin.default.message", PLUGIN.name, PLUGIN.author, PLUGIN.version));
                 break;
         }
     });
@@ -213,7 +241,7 @@ mc.listen("onChat", (sender, msg) => {
 
             // Play a notification sound if configured.
             if (mentionSound) {
-                mc.runcmd(`execute as "${player.name}" at @s run playsound ${mentionSound} @s ~ ~ ~`);
+                playSoundPacket(player, mentionSound, player.pos);
             }
         } else {
             // Send the original message to other players.
@@ -228,16 +256,16 @@ mc.listen("onServerStarted", () => {
     if (Config.get("command_registration")) {
         regCmd();
     } else {
-        logger.info(i18n.tr("log.cmd.disabled"));
+        logger.info(i18n.trl(Config.get("lang","en_US"), "log.cmd.disabled"));
     }
 });
 
 // Initialize player data upon their first join.
 mc.listen("onJoin", (player) => {
     if (Data.get(player.xuid, null) == null) {
-        logger.info(i18n.tr("log.init.start", player.name, player.xuid));
+        logger.info(i18n.trl(Config.get("lang","en_US"), "log.init.start", player.name, player.xuid));
         PDataInitialize(player.xuid);
-        logger.info(i18n.tr("log.init.success", player.name, player.xuid));
+        logger.info(i18n.trl(Config.get("lang","en_US"), "log.init.success", player.name, player.xuid));
     }
 });
 
@@ -253,9 +281,10 @@ function consoleInfo() {
         "`---|  |----`|  | `---|  |----`|  |     |  |__   |  |__|  | |  | |  |  __  |  |__|  | |  |     |  | |  |  __  |  |__|  | `---|  |----`",
         "    |  |     |  |     |  |     |  |     |   __|  |   __   | |  | |  | |_ | |   __   | |  |     |  | |  | |_ | |   __   |     |  |     ",
         "    |  |     |  |     |  |     |  `----.|  |____ |  |  |  | |  | |  |__| | |  |  |  | |  `----.|  | |  |__| | |  |  |  |     |  |     ",
-        "    |__|     |__|     |__|     |_______||_______||__|  |__| |__|  \\}______| |__|  |__| |_______||__|  \\______| |__|  |__|     |__|     ",
+        "    |__|     |__|     |__|     |_______||_______||__|  |__| |__|  \\______| |__|  |__| |_______||__|  \\______| |__|  |__|     |__|     ",
+        "",
         `                                      Version: ${PLUGIN.version}`,
-        `                                        Author: ${PLUGIN.author}`,
+        `                                      Author: ${PLUGIN.author}`,
         "",
     ].join("\n");
     logger.log(logo);
