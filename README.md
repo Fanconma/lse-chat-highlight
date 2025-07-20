@@ -1,4 +1,6 @@
 # Chat Highlight
+🌏 English | [简体中文](https://github.com/Fanconma/lse-chat-highlight/blob/main/README.zh_CN.md)
+
 A simple plugin to highlight specific keywords in chat for LeviLamina - the LSE engine!
 <img width="1216" height="181" alt="image" src="https://github.com/user-attachments/assets/67cf291a-de09-449f-879b-f9f3323f0cb6" />
 
