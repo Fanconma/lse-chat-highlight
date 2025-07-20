@@ -2,7 +2,8 @@
 🌏 [English](https://github.com/Fanconma/lse-chat-highlight/blob/main/README.md) | 简体中文
 
 一个简单的插件，用于在 LeviLamina（LSE 引擎）的聊天中突出显示特定关键字！
-<img width="1216" height="181" alt="image" src="https://github.com/user-attachments/assets/67cf291a-de09-449f-879b-f9f3323f0cb6" />
+<img width="822" height="173" alt="image" src="https://github.com/user-attachments/assets/102f9e0b-ff34-4b1d-8906-3f0f8c8496c1" />
+
 
 
 # 安装
